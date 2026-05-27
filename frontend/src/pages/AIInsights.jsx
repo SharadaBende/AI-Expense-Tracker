@@ -14,27 +14,39 @@ const API = "http://127.0.0.1:8000";
 
 function AIInsights() {
   const [aiData, setAiData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const fetchAI = async () => {
-    const res = await axios.get(`${API}/ai-summary`);
-    setAiData(res.data);
+    try {
+      // ✅ Using REAL AI endpoint (Ollama chat)
+      const res = await axios.get(
+        `${API}/ai-chat?prompt=Analyze my spending and give financial advice`
+      );
+
+      console.log("AI RESPONSE:", res.data);
+      setAiData(res.data);
+    } catch (err) {
+      console.log("AI ERROR:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchAI();
   }, []);
 
-  if (!aiData) return <p>Loading AI...</p>;
+  if (loading) return <p>Loading AI Insights...</p>;
 
-  const labels = Object.keys(aiData.category_breakdown);
-  const values = Object.values(aiData.category_breakdown);
+  if (!aiData?.reply) return <p>AI response not available</p>;
 
+  // fallback dummy chart (since ai-chat does not return breakdown)
   const data = {
-    labels,
+    labels: ["Food", "Travel", "Shopping"],
     datasets: [
       {
-        data: values,
-        backgroundColor: ["#4CAF50", "#2196F3", "#FFC107", "#FF5722"]
+        data: [30, 50, 20],
+        backgroundColor: ["#4CAF50", "#2196F3", "#FFC107"]
       }
     ]
   };
@@ -44,28 +56,31 @@ function AIInsights() {
       
       <h2>🤖 AI Insights Dashboard</h2>
 
-      {/* Summary Card */}
-      <div style={{
-        padding: "15px",
-        background: "#f5f5f5",
-        borderRadius: "10px",
-        marginBottom: "20px"
-      }}>
-        <h3>Total Expense: ₹{aiData.total_expense}</h3>
-        <p>{aiData.ai_suggestion}</p>
+      {/* AI RESPONSE CARD */}
+      <div
+        style={{
+          padding: "15px",
+          background: "#f5f5f5",
+          borderRadius: "10px",
+          marginBottom: "20px"
+        }}
+      >
+        <h3>AI Financial Advice</h3>
+        <p style={{ lineHeight: "1.6" }}>{aiData.reply}</p>
       </div>
 
-      {/* Chart Card */}
-      <div style={{
-        padding: "15px",
-        background: "#fff",
-        borderRadius: "10px",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
-      }}>
-        <h3>Category Breakdown</h3>
+      {/* CHART */}
+      <div
+        style={{
+          padding: "15px",
+          background: "#fff",
+          borderRadius: "10px",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+        }}
+      >
+        <h3>Spending Overview</h3>
         <Pie data={data} />
       </div>
-
     </div>
   );
 }

@@ -1,6 +1,5 @@
 import os
-from dotenv import load_dotenv
-from openai import OpenAI
+import requests
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
@@ -11,16 +10,12 @@ import crud
 
 from database import engine, SessionLocal, Base
 
-
-load_dotenv()
-
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
@@ -37,35 +32,32 @@ def get_db():
     finally:
         db.close()
 
+
 # Home route
 @app.get("/")
 def home():
     return {"message": "AI Expense Tracker API Running"}
 
+
 # Add expense
 @app.post("/expenses", response_model=schemas.ExpenseResponse)
-def add_expense(
-    expense: schemas.ExpenseCreate,
-    db: Session = Depends(get_db)
-):
+def add_expense(expense: schemas.ExpenseCreate, db: Session = Depends(get_db)):
     return crud.create_expense(db, expense)
+
 
 # Get all expenses
 @app.get("/expenses")
 def get_all_expenses(db: Session = Depends(get_db)):
     return crud.get_expenses(db)
 
+
 # Delete expense
 @app.delete("/expenses/{expense_id}")
-def delete_expense(
-    expense_id: int,
-    db: Session = Depends(get_db)
-):
+def delete_expense(expense_id: int, db: Session = Depends(get_db)):
     return crud.delete_expense(db, expense_id)
 
 
-
-
+# AI SUMMARY (simple insights)
 @app.get("/ai-summary")
 def ai_summary(db: Session = Depends(get_db)):
     expenses = crud.get_expenses(db)
@@ -81,10 +73,53 @@ def ai_summary(db: Session = Depends(get_db)):
 
     highest_category = max(category_totals, key=category_totals.get)
 
-    suggestion = f"You spent most on {highest_category}. Try reducing expenses in this category."
+    suggestion = f"You spent most on {highest_category}. Try reducing expenses."
 
     return {
         "total_expense": total,
         "category_breakdown": category_totals,
         "ai_suggestion": suggestion
     }
+
+
+# 🤖 REAL AI CHAT (OLLAMA LOCAL AI)
+@app.get("/ai-chat")
+def ai_chat(prompt: str, db: Session = Depends(get_db)):
+    try:
+        expenses = crud.get_expenses(db)
+
+        total = sum(e.amount for e in expenses)
+
+        category_totals = {}
+        for e in expenses:
+            category_totals[e.category] = category_totals.get(e.category, 0) + e.amount
+
+        full_prompt = f"""
+You are a smart financial assistant.
+
+User expense data:
+Total spent: {total}
+Category breakdown: {category_totals}
+
+User question: {prompt}
+
+Give a short, clear, helpful financial answer.
+"""
+
+        response = requests.post(
+            "http://localhost:11434/api/generate",
+            json={
+                "model": "llama3",
+                "prompt": full_prompt,
+                "stream": False
+            }
+        )
+
+        result = response.json()
+
+        return {
+            "reply": result["response"]
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
