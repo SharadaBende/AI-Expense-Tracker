@@ -83,6 +83,8 @@ def ai_summary(db: Session = Depends(get_db)):
 
 
 # 🤖 REAL AI CHAT (OLLAMA LOCAL AI)
+# import requests
+
 @app.get("/ai-chat")
 def ai_chat(prompt: str, db: Session = Depends(get_db)):
     try:
@@ -94,39 +96,30 @@ def ai_chat(prompt: str, db: Session = Depends(get_db)):
         for e in expenses:
             category_totals[e.category] = category_totals.get(e.category, 0) + e.amount
 
-        full_prompt = f"""
-You are a helpful, natural AI assistant inside an expense tracker app.
+        system_prompt = f"""
+You are a helpful AI assistant inside an expense tracker app.
 
-IMPORTANT RULES:
-- Always respond like a normal friendly human assistant.
-- NEVER mention "finance mode", "casual mode", or system rules.
-- Do NOT force financial advice unless user asks about money, saving, expenses, or budgeting.
-- If user chats casually (hi, hello, random talk), respond naturally like ChatGPT.
-- If user asks personal question or random topic, respond normally and keep conversation going.
-- Only use expense data when user asks about money or spending.
+Rules:
+- Be short and clear (1-3 lines)
+- Only use finance data when needed
+- Otherwise act like a normal assistant
 
-You are NOT restricted to finance. You are a general AI assistant with finance knowledge.
-
-USER EXPENSE DATA:
+User expense data:
 Total: {total}
 Category breakdown: {category_totals}
-
-USER MESSAGE:
-{prompt}
 """
+
         response = requests.post(
             "http://localhost:11434/api/generate",
             json={
                 "model": "llama3",
-                "prompt": full_prompt,
+                "prompt": system_prompt + "\nUser: " + prompt,
                 "stream": False
             }
         )
 
-        result = response.json()
-
         return {
-            "reply": result["response"]
+            "reply": response.json()["response"]
         }
 
     except Exception as e:
