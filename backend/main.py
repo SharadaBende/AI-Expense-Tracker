@@ -10,10 +10,14 @@ import crud
 
 from database import engine, SessionLocal, Base
 
-# Create database tables
+# CREATE DATABASE TABLES
 Base.metadata.create_all(bind=engine)
 
+# FASTAPI APP
 app = FastAPI()
+
+# CHAT MEMORY
+chat_history = []
 
 # CORS
 app.add_middleware(
@@ -24,7 +28,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Database connection
+# DATABASE CONNECTION
 def get_db():
     db = SessionLocal()
     try:
@@ -33,47 +37,66 @@ def get_db():
         db.close()
 
 
-# Home route
+# HOME ROUTE
 @app.get("/")
 def home():
-    return {"message": "AI Expense Tracker API Running"}
+    return {
+        "message": "AI Expense Tracker API Running"
+    }
 
 
-# Add expense
+# ADD EXPENSE
 @app.post("/expenses", response_model=schemas.ExpenseResponse)
-def add_expense(expense: schemas.ExpenseCreate, db: Session = Depends(get_db)):
+def add_expense(
+    expense: schemas.ExpenseCreate,
+    db: Session = Depends(get_db)
+):
     return crud.create_expense(db, expense)
 
 
-# Get all expenses
+# GET ALL EXPENSES
 @app.get("/expenses")
 def get_all_expenses(db: Session = Depends(get_db)):
     return crud.get_expenses(db)
 
 
-# Delete expense
+# DELETE EXPENSE
 @app.delete("/expenses/{expense_id}")
-def delete_expense(expense_id: int, db: Session = Depends(get_db)):
+def delete_expense(
+    expense_id: int,
+    db: Session = Depends(get_db)
+):
     return crud.delete_expense(db, expense_id)
 
 
-# AI SUMMARY (simple insights)
+# AI SUMMARY
 @app.get("/ai-summary")
 def ai_summary(db: Session = Depends(get_db)):
     expenses = crud.get_expenses(db)
 
     if not expenses:
-        return {"message": "No expenses found"}
+        return {
+            "message": "No expenses found"
+        }
 
     total = sum(e.amount for e in expenses)
 
     category_totals = {}
+
     for e in expenses:
-        category_totals[e.category] = category_totals.get(e.category, 0) + e.amount
+        category_totals[e.category] = (
+            category_totals.get(e.category, 0) + e.amount
+        )
 
-    highest_category = max(category_totals, key=category_totals.get)
+    highest_category = max(
+        category_totals,
+        key=category_totals.get
+    )
 
-    suggestion = f"You spent most on {highest_category}. Try reducing expenses."
+    suggestion = (
+        f"You spent most on {highest_category}. "
+        f"Try reducing expenses in this category."
+    )
 
     return {
         "total_expense": total,
@@ -82,57 +105,113 @@ def ai_summary(db: Session = Depends(get_db)):
     }
 
 
-# 🤖 REAL AI CHAT (OLLAMA LOCAL AI)
-
-import requests
-
+# AI CHAT
 @app.get("/ai-chat")
-def ai_chat(prompt: str, db: Session = Depends(get_db)):
+def ai_chat(
+    prompt: str,
+    db: Session = Depends(get_db)
+):
     try:
+        global chat_history
+
+        # GET EXPENSES
         expenses = crud.get_expenses(db)
 
         total = sum(e.amount for e in expenses)
 
         category_totals = {}
+
         for e in expenses:
-            category_totals[e.category] = category_totals.get(e.category, 0) + e.amount
+            category_totals[e.category] = (
+                category_totals.get(e.category, 0) + e.amount
+            )
 
-        full_prompt = f"""
-You are a helpful AI assistant.
+        # SYSTEM PROMPT
+        system_prompt = f"""
+You are a smart and natural AI assistant.
 
-You can do two things:
-1. Talk normally like a chatbot (friendly conversation)
-2. Help with finance ONLY when user asks about expenses, money, saving, budgeting
+RULES:
+- Keep responses concise and natural.
+- Talk naturally like ChatGPT.
+- Reply to casual conversations normally.
+- Reply to random questions naturally.
+- Keep answers short unless user asks deeply.
+- NEVER ignore user messages.
+- Avoid repetitive answers.
+- Do NOT constantly discuss finance.
+- Only discuss money if user asks.
+- Be friendly and human-like.
 
-User message:
-{prompt}
-
-If the question is about expenses, use this data:
-Total spent: {total}
-Category breakdown: {category_totals}
-
-Rules:
-- If user says hello → respond normally
-- If user asks random questions → respond naturally
-- If user asks finance → use expense data
-- Keep responses short and natural
+Expense Data:
+Total Expense = {total}
+Category Totals = {category_totals}
 """
 
+        # SAVE USER MESSAGE
+        chat_history.append({
+            "role": "user",
+            "content": prompt
+        })
+
+        # KEEP ONLY LAST 10 MESSAGES
+        chat_history = chat_history[-10:]
+
+        # BUILD MESSAGE LIST
+        messages = [
+            {
+                "role": "system",
+                "content": system_prompt
+            }
+        ] + chat_history
+
+        # OLLAMA API CALL
         response = requests.post(
-            "http://localhost:11434/api/generate",
-            json={
-                "model": "llama3",
-                "prompt": full_prompt,
-                "stream": False
-            },
-            timeout=60
-        )
+    "http://localhost:11434/api/chat",
+    json={
+        "model": "qwen2.5-coder:3b",
+
+        "messages": messages[-6:],
+
+        "stream": False,
+
+        "options": {
+            "temperature": 0.7,
+            "num_predict": 80,
+            "num_ctx": 1024
+        }
+    },
+    timeout=40
+)
 
         data = response.json()
 
+        # SAFE RESPONSE EXTRACTION
+        ai_reply = (
+            data.get("message", {})
+            .get("content", "")
+            .strip()
+        )
+
+        # EMPTY RESPONSE PROTECTION
+        if not ai_reply:
+            ai_reply = (
+                "Sorry, I couldn't understand that. "
+                "Please try again."
+            )
+
+        # SAVE AI RESPONSE
+        chat_history.append({
+            "role": "assistant",
+            "content": ai_reply
+        })
+
         return {
-            "reply": data.get("response", "No response from model")
+            "reply": ai_reply
         }
 
     except Exception as e:
-        return {"error": str(e)}
+        print("AI ERROR:", e)
+
+        return {
+            "reply": "AI server issue. Please try again."
+        }
