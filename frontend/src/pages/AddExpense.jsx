@@ -18,7 +18,8 @@ function AddExpense() {
     await axios.post(`${API}/expenses`, {
       title: form.title,
       amount: Number(form.amount),
-      category: form.category
+      category: form.category.trim()
+    //   category: form.category
     });
 
     setForm({ title: "", amount: "", category: "" });

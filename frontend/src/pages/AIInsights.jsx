@@ -24,45 +24,48 @@ function AIInsights() {
     fetchAI();
   }, []);
 
-  if (!aiData) return <p>Loading...</p>;
+  if (!aiData) return <p>Loading AI...</p>;
 
   const labels = Object.keys(aiData.category_breakdown);
   const values = Object.values(aiData.category_breakdown);
 
   const data = {
-    labels: labels,
+    labels,
     datasets: [
       {
         data: values,
-        backgroundColor: ["#ff6384", "#36a2eb", "#ffcd56", "#4bc0c0"]
+        backgroundColor: ["#4CAF50", "#2196F3", "#FFC107", "#FF5722"]
       }
     ]
   };
 
   return (
-    <div style={{ padding: "20px", maxWidth: "600px", margin: "auto" }}>
+    <div style={{ padding: "20px", maxWidth: "700px", margin: "auto" }}>
+      
       <h2>🤖 AI Insights Dashboard</h2>
 
+      {/* Summary Card */}
       <div style={{
-        background: "#fff",
         padding: "15px",
+        background: "#f5f5f5",
         borderRadius: "10px",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+        marginBottom: "20px"
       }}>
-        <h3>Total: ₹{aiData.total_expense}</h3>
+        <h3>Total Expense: ₹{aiData.total_expense}</h3>
         <p>{aiData.ai_suggestion}</p>
       </div>
 
+      {/* Chart Card */}
       <div style={{
-        marginTop: "20px",
-        background: "#fff",
         padding: "15px",
+        background: "#fff",
         borderRadius: "10px",
         boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
       }}>
-        <h3>Expense Breakdown</h3>
+        <h3>Category Breakdown</h3>
         <Pie data={data} />
       </div>
+
     </div>
   );
 }

@@ -1,3 +1,6 @@
+import os
+from dotenv import load_dotenv
+from openai import OpenAI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
@@ -7,6 +10,11 @@ import schemas
 import crud
 
 from database import engine, SessionLocal, Base
+
+
+load_dotenv()
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
