@@ -1,168 +1,301 @@
-// import { Routes, Route, Link } from "react-router-dom";
-// import Dashboard from "./pages/Dashboard";
-// import AddExpense from "./pages/AddExpense";
-// import AIInsights from "./pages/AIInsights";
-// import Analytics from "./pages/Analytics";
+import { useState, useEffect } from "react";
 
-// function App() {
-//   return (
-//     <div>
-//       {/* NAVBAR */}
-//       <nav style={{
-//   padding: "12px 20px",
-//   background: "#111",
-//   display: "flex",
-//   gap: "15px",
-//   position: "sticky",
-//   top: 0
-// }}>
-//   <Link style={{ color: "white", textDecoration: "none" }} to="/">Dashboard</Link>
-// <Link style={{ color: "white", textDecoration: "none" }} to="/add">Add Expense</Link>
-// <Link style={{ color: "white", textDecoration: "none" }} to="/ai">AI Insights</Link>
-// <Link style={{ color: "white", textDecoration: "none" }} to="/analytics">Analytics</Link>
-//     </nav>
+import {
+  Routes,
+  Route,
+  Link
+} from "react-router-dom";
 
-//       {/* ROUTES */}
-//       <Routes>
-//         <Route path="/" element={<Dashboard />} />
-//         <Route path="/add" element={<AddExpense />} />
-//         <Route path="/ai" element={<AIInsights />} />
-//         <Route path="/analytics" element={<Analytics />} />
-//       </Routes>
-//     </div>
-//   );
-// }
-
-// export default App;
-
-
-
-
-
-
-
-
-import { Routes, Route, Link, useLocation } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import AddExpense from "./pages/AddExpense";
-import AIInsights from "./pages/AIInsights";
 import Analytics from "./pages/Analytics";
+import AIInsights from "./pages/AIInsights";
 
 function App() {
-  const location = useLocation();
 
-  const isActive = (path) => location.pathname === path;
+  const [menuOpen, setMenuOpen] =
+    useState(false);
+
+  const [isMobile, setIsMobile] =
+    useState(window.innerWidth <= 768);
+
+  // SCREEN RESIZE
+  useEffect(() => {
+
+    const handleResize = () => {
+
+      setIsMobile(
+        window.innerWidth <= 768
+      );
+
+      // CLOSE MENU ON DESKTOP
+      if (window.innerWidth > 768) {
+
+        setMenuOpen(false);
+      }
+    };
+
+    window.addEventListener(
+      "resize",
+      handleResize
+    );
+
+    return () =>
+      window.removeEventListener(
+        "resize",
+        handleResize
+      );
+
+  }, []);
 
   return (
-    <div>
+
+    <div style={styles.app}>
 
       {/* NAVBAR */}
       <nav style={styles.navbar}>
 
-        {/* BRAND */}
-        <div style={styles.logo}>
-          💰 Expense Tracker AI
+        {/* TOP BAR */}
+        <div style={styles.topBar}>
+
+          {/* LOGO */}
+          <div style={styles.logo}>
+            💰 ExpenseAI
+          </div>
+
+          {/* DESKTOP LINKS */}
+          {!isMobile && (
+
+            <div style={styles.desktopLinks}>
+
+              <Link
+                to="/"
+                style={styles.link}
+              >
+                Dashboard
+              </Link>
+
+              <Link
+                to="/add"
+                style={styles.link}
+              >
+                Add Expense
+              </Link>
+
+              <Link
+                to="/analytics"
+                style={styles.link}
+              >
+                Analytics
+              </Link>
+
+              <Link
+                to="/ai"
+                style={styles.link}
+              >
+                AI Chat
+              </Link>
+
+            </div>
+
+          )}
+
+          {/* MOBILE MENU BUTTON */}
+          {isMobile && (
+
+            <button
+              onClick={() =>
+                setMenuOpen(!menuOpen)
+              }
+              style={styles.menuButton}
+            >
+              {menuOpen ? "✕" : "☰"}
+            </button>
+
+          )}
+
         </div>
 
-        {/* LINKS */}
-        <div style={styles.links}>
+        {/* MOBILE MENU */}
+        {isMobile && menuOpen && (
 
-          <Link
-            to="/"
-            style={{
-              ...styles.link,
-              ...(isActive("/") ? styles.active : {})
-            }}
-          >
-            Dashboard
-          </Link>
+          <div style={styles.mobileMenu}>
 
-          <Link
-            to="/add"
-            style={{
-              ...styles.link,
-              ...(isActive("/add") ? styles.active : {})
-            }}
-          >
-            Add Expense
-          </Link>
+            <Link
+              to="/"
+              style={styles.mobileLink}
+              onClick={() =>
+                setMenuOpen(false)
+              }
+            >
+              Dashboard
+            </Link>
 
-          <Link
-            to="/ai"
-            style={{
-              ...styles.link,
-              ...(isActive("/ai") ? styles.active : {})
-            }}
-          >
-            AI Chat
-          </Link>
+            <Link
+              to="/add"
+              style={styles.mobileLink}
+              onClick={() =>
+                setMenuOpen(false)
+              }
+            >
+              Add Expense
+            </Link>
 
-          <Link
-            to="/analytics"
-            style={{
-              ...styles.link,
-              ...(isActive("/analytics") ? styles.active : {})
-            }}
-          >
-            Analytics
-          </Link>
+            <Link
+              to="/analytics"
+              style={styles.mobileLink}
+              onClick={() =>
+                setMenuOpen(false)
+              }
+            >
+              Analytics
+            </Link>
 
-        </div>
+            <Link
+              to="/ai"
+              style={styles.mobileLink}
+              onClick={() =>
+                setMenuOpen(false)
+              }
+            >
+              AI Chat
+            </Link>
+
+          </div>
+
+        )}
+
       </nav>
 
-      {/* ROUTES */}
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/add" element={<AddExpense />} />
-        <Route path="/ai" element={<AIInsights />} />
-        <Route path="/analytics" element={<Analytics />} />
-      </Routes>
+      {/* PAGES */}
+      <div style={styles.pageContent}>
+
+        <Routes>
+
+          <Route
+            path="/"
+            element={<Dashboard />}
+          />
+
+          <Route
+            path="/add"
+            element={<AddExpense />}
+          />
+
+          <Route
+            path="/analytics"
+            element={<Analytics />}
+          />
+
+          <Route
+            path="/ai"
+            element={<AIInsights />}
+          />
+
+        </Routes>
+
+      </div>
 
     </div>
+
   );
 }
 
 const styles = {
+
+  app: {
+    minHeight: "100vh",
+    background: "#f5f7fb",
+    fontFamily: "Arial, sans-serif"
+  },
+
   navbar: {
     position: "sticky",
     top: 0,
     zIndex: 1000,
 
+    background: "#111827",
+
+    padding: "14px 20px",
+
+    borderBottom:
+      "1px solid rgba(255,255,255,0.08)"
+  },
+
+  topBar: {
     display: "flex",
-    justifyContent: "space-between",
     alignItems: "center",
-
-    padding: "12px 24px",
-
-    background: "rgba(255,255,255,0.85)",
-    backdropFilter: "blur(12px)",
-    borderBottom: "1px solid #eee"
+    justifyContent: "space-between"
   },
 
   logo: {
-    fontSize: "16px",
+    color: "white",
+    fontSize: "20px",
     fontWeight: "bold",
-    color: "#4f46e5"
+    letterSpacing: "0.5px"
   },
 
-  links: {
+  desktopLinks: {
     display: "flex",
-    gap: "16px"
+    alignItems: "center",
+    gap: "12px"
+  },
+
+  menuButton: {
+    background: "transparent",
+    border: "none",
+    color: "white",
+    fontSize: "26px",
+    cursor: "pointer"
+  },
+
+  mobileMenu: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
+    marginTop: "16px"
   },
 
   link: {
     textDecoration: "none",
+
+    color: "#e5e7eb",
+
+    padding: "10px 16px",
+
+    borderRadius: "10px",
+
+    background:
+      "rgba(255,255,255,0.05)",
+
     fontSize: "14px",
-    color: "#555",
-    padding: "6px 10px",
-    borderRadius: "8px",
-    transition: "0.2s"
+
+    fontWeight: "500",
+
+    transition: "0.3s"
   },
 
-  active: {
-    background: "#4f46e5",
-    color: "white"
+  mobileLink: {
+    textDecoration: "none",
+
+    color: "#e5e7eb",
+
+    padding: "12px",
+
+    borderRadius: "10px",
+
+    background:
+      "rgba(255,255,255,0.05)",
+
+    fontSize: "14px",
+
+    fontWeight: "500"
+  },
+
+  pageContent: {
+    width: "100%"
   }
+
 };
 
 export default App;

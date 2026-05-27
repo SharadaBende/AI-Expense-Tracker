@@ -1,299 +1,10 @@
-
-// import { useEffect, useRef, useState } from "react";
-// import axios from "axios";
-
-// const API = "http://127.0.0.1:8000";
-
-// function AIInsights() {
-//   const [messages, setMessages] = useState([]);
-//   const [input, setInput] = useState("");
-//   const [loading, setLoading] = useState(false);
-//   const [listening, setListening] = useState(false);
-
-//   const chatEndRef = useRef(null);
-
-//   useEffect(() => {
-//     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-//   }, [messages, loading]);
-
-//   const sendMessage = async (textFromVoice = null) => {
-//     const messageText = textFromVoice || input;
-//     if (!messageText.trim()) return;
-
-//     const userMsg = {
-//       role: "user",
-//       text: messageText,
-//       time: new Date().toLocaleTimeString()
-//     };
-
-//     setMessages((prev) => [...prev, userMsg]);
-//     setInput("");
-//     setLoading(true);
-
-//     try {
-//       const res = await axios.get(
-//         `${API}/ai-chat?prompt=${encodeURIComponent(messageText)}`
-//       );
-
-//       const aiMsg = {
-//         role: "ai",
-//         text: res.data.reply,
-//         time: new Date().toLocaleTimeString()
-//       };
-
-//       setMessages((prev) => [...prev, aiMsg]);
-//     } catch (err) {
-//       setMessages((prev) => [
-//         ...prev,
-//         {
-//           role: "ai",
-//           text: "Something went wrong. Try again.",
-//           time: new Date().toLocaleTimeString()
-//         }
-//       ]);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const startVoiceInput = () => {
-//     const SpeechRecognition =
-//       window.SpeechRecognition || window.webkitSpeechRecognition;
-
-//     if (!SpeechRecognition) {
-//       alert("Voice input not supported");
-//       return;
-//     }
-
-//     const recognition = new SpeechRecognition();
-//     recognition.lang = "en-US";
-//     recognition.interimResults = false;
-
-//     recognition.start();
-//     setListening(true);
-
-//     recognition.onresult = (event) => {
-//       const text = event.results[0][0].transcript;
-//       setListening(false);
-//       sendMessage(text);
-//     };
-
-//     recognition.onerror = () => setListening(false);
-//     recognition.onend = () => setListening(false);
-//   };
-
-//   return (
-//     <div style={styles.page}>
-
-//       {/* HEADER */}
-//       <div style={styles.header}>
-//         <div style={styles.title}>AI Assistant</div>
-//         <div style={styles.subtitle}>Ask anything about your expenses 💬</div>
-//       </div>
-
-//       {/* CHAT BOX */}
-//       <div style={styles.chatWrapper}>
-//         <div style={styles.chatContainer}>
-
-//           {messages.length === 0 && (
-//             <div style={styles.empty}>
-//               Start a conversation...
-//             </div>
-//           )}
-
-//           {messages.map((msg, i) => (
-//             <div
-//               key={i}
-//               style={{
-//                 ...styles.row,
-//                 justifyContent:
-//                   msg.role === "user" ? "flex-end" : "flex-start"
-//               }}
-//             >
-//               <div
-//                 style={{
-//                   ...styles.bubble,
-//                   background:
-//                     msg.role === "user"
-//                       ? "#4f46e5"
-//                       : "#ffffff",
-//                   color: msg.role === "user" ? "white" : "#111"
-//                 }}
-//               >
-//                 {msg.text}
-//                 <div style={styles.time}>{msg.time}</div>
-//               </div>
-//             </div>
-//           ))}
-
-//           {loading && (
-//             <div style={styles.typing}>AI is thinking...</div>
-//           )}
-
-//           <div ref={chatEndRef} />
-//         </div>
-//       </div>
-
-//       {/* INPUT BAR */}
-//       <div style={styles.inputBar}>
-
-//         <button
-//           onClick={startVoiceInput}
-//           style={{
-//             ...styles.mic,
-//             background: listening ? "#ef4444" : "#f3f4f6"
-//           }}
-//         >
-//           🎤
-//         </button>
-
-//         <input
-//           value={input}
-//           onChange={(e) => setInput(e.target.value)}
-//           placeholder={listening ? "Listening..." : "Type message..."}
-//           style={styles.input}
-//           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-//         />
-
-//         <button onClick={() => sendMessage()} style={styles.send}>
-//           Send
-//         </button>
-//       </div>
-
-//     </div>
-//   );
-// }
-
-// const styles = {
-//   page: {
-//     height: "100vh",
-//     display: "flex",
-//     flexDirection: "column",
-//     background: "#f5f7fb",
-//     fontFamily: "Arial"
-//   },
-
-//   header: {
-//     textAlign: "center",
-//     padding: "14px",
-//     background: "white",
-//     borderBottom: "1px solid #eee"
-//   },
-
-//   title: {
-//     fontSize: "16px",
-//     fontWeight: "bold"
-//   },
-
-//   subtitle: {
-//     fontSize: "12px",
-//     color: "#666"
-//   },
-
-//   chatWrapper: {
-//     flex: 1,
-//     display: "flex",
-//     justifyContent: "center",
-//     padding: "15px"
-//   },
-
-//   chatContainer: {
-//     width: "100%",
-//     maxWidth: "800px",
-//     background: "white",
-//     borderRadius: "12px",
-//     padding: "15px",
-//     overflowY: "auto",
-//     display: "flex",
-//     flexDirection: "column",
-//     gap: "10px",
-//     boxShadow: "0 6px 20px rgba(0,0,0,0.08)"
-//   },
-
-//   row: {
-//     display: "flex"
-//   },
-
-//   bubble: {
-//     maxWidth: "75%",
-//     padding: "10px 12px",
-//     borderRadius: "12px",
-//     fontSize: "14px"
-//   },
-
-//   time: {
-//     fontSize: "10px",
-//     opacity: 0.6,
-//     marginTop: "5px"
-//   },
-
-//   inputBar: {
-//     display: "flex",
-//     padding: "12px",
-//     background: "white",
-//     borderTop: "1px solid #eee",
-//     gap: "10px",
-//     alignItems: "center"
-//   },
-
-//   input: {
-//     flex: 1,
-//     padding: "10px",
-//     borderRadius: "8px",
-//     border: "1px solid #ddd",
-//     outline: "none"
-//   },
-
-//   send: {
-//     padding: "10px 16px",
-//     background: "#4f46e5",
-//     color: "white",
-//     border: "none",
-//     borderRadius: "8px",
-//     cursor: "pointer"
-//   },
-
-//   mic: {
-//     padding: "10px",
-//     borderRadius: "8px",
-//     border: "none",
-//     cursor: "pointer"
-//   },
-
-//   typing: {
-//     fontStyle: "italic",
-//     color: "#666"
-//   },
-
-//   empty: {
-//     textAlign: "center",
-//     color: "#888",
-//     marginTop: "40px"
-//   }
-// };
-
-// export default AIInsights;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 
 const API = "http://127.0.0.1:8000";
 
 function AIInsights() {
+
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -301,63 +12,95 @@ function AIInsights() {
 
   const chatEndRef = useRef(null);
 
+  // IMPORTANT
+  const recognitionRef = useRef(null);
+
+  // AUTO SCROLL
   useEffect(() => {
+
     chatEndRef.current?.scrollIntoView({
       behavior: "smooth"
     });
+
   }, [messages, loading]);
 
   // SEND MESSAGE
   const sendMessage = async (voiceText = null) => {
+
     const messageText = voiceText || input;
 
     if (!messageText.trim()) return;
 
     const userMessage = {
+
       role: "user",
+
       text: messageText,
+
       time: new Date().toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit"
       })
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages((prev) => [
+      ...prev,
+      userMessage
+    ]);
 
     setInput("");
+
     setLoading(true);
 
     try {
+
       const res = await axios.get(
         `${API}/ai-chat?prompt=${encodeURIComponent(messageText)}`
       );
 
       const aiMessage = {
+
         role: "ai",
-        text: res.data.reply,
+
+        text:
+          res.data.reply ||
+          "No response from AI.",
+
         time: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit"
         })
       };
 
-      setMessages((prev) => [...prev, aiMessage]);
+      setMessages((prev) => [
+        ...prev,
+        aiMessage
+      ]);
 
     } catch (err) {
 
+      console.log(err);
+
       setMessages((prev) => [
+
         ...prev,
+
         {
           role: "ai",
-          text: "Something went wrong.",
+
+          text:
+            "AI server error. Please try again.",
+
           time: new Date().toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit"
           })
         }
+
       ]);
 
     } finally {
+
       setLoading(false);
     }
   };
@@ -370,79 +113,169 @@ function AIInsights() {
       window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      alert("Voice input not supported");
+
+      alert("Use Google Chrome");
+
       return;
     }
 
-    const recognition = new SpeechRecognition();
+    // STOP OLD INSTANCE
+    if (recognitionRef.current) {
+
+      recognitionRef.current.stop();
+    }
+
+    const recognition =
+      new SpeechRecognition();
+
+    recognitionRef.current =
+      recognition;
 
     recognition.lang = "en-US";
-    recognition.interimResults = false;
 
-    recognition.start();
+    recognition.continuous = true;
+
+    recognition.interimResults = true;
+
+    recognition.maxAlternatives = 1;
+
+    let finalTranscript = "";
+
+    let silenceTimer;
 
     setListening(true);
 
+    recognition.start();
+
+    // RESULTS
     recognition.onresult = (event) => {
-      const text = event.results[0][0].transcript;
 
-      setListening(false);
+      clearTimeout(silenceTimer);
 
-      sendMessage(text);
+      let interimTranscript = "";
+
+      for (
+        let i = event.resultIndex;
+        i < event.results.length;
+        i++
+      ) {
+
+        const transcript =
+          event.results[i][0].transcript;
+
+        if (event.results[i].isFinal) {
+
+          finalTranscript +=
+            transcript + " ";
+
+        } else {
+
+          interimTranscript +=
+            transcript;
+        }
+      }
+
+      // LIVE TEXT
+      setInput(
+        finalTranscript +
+        interimTranscript
+      );
+
+      // WAIT BEFORE STOPPING
+      silenceTimer = setTimeout(() => {
+
+        recognition.stop();
+
+      }, 3000);
     };
 
-    recognition.onerror = () => {
-      setListening(false);
-    };
-
+    // END
     recognition.onend = () => {
+
+      setListening(false);
+
+      if (finalTranscript.trim()) {
+
+        sendMessage(
+          finalTranscript.trim()
+        );
+      }
+    };
+
+    // ERROR
+    recognition.onerror = (event) => {
+
+      console.log(event.error);
+
       setListening(false);
     };
   };
 
+  // MANUAL STOP
+  const stopVoiceInput = () => {
+
+    if (recognitionRef.current) {
+
+      recognitionRef.current.stop();
+    }
+
+    setListening(false);
+  };
+
   return (
+
     <div style={styles.page}>
 
       {/* HEADER */}
       <div style={styles.header}>
 
         <div>
+
           <h1 style={styles.title}>
             AI Assistant
           </h1>
 
           <p style={styles.subtitle}>
-            Chat with your smart finance assistant
+            Chat naturally with your finance AI
           </p>
+
         </div>
 
       </div>
 
-      {/* CHAT AREA */}
+      {/* CHAT */}
       <div style={styles.chatArea}>
 
         <div style={styles.chatBox}>
 
           {messages.length === 0 && (
+
             <div style={styles.emptyState}>
-              <div style={styles.emptyIcon}>💬</div>
+
+              <div style={styles.emptyIcon}>
+                💬
+              </div>
 
               <h2 style={styles.emptyTitle}>
-                Start chatting
+                Start a conversation
               </h2>
 
               <p style={styles.emptyText}>
-                Ask anything or use voice input
+                Type or speak using the microphone
               </p>
+
             </div>
+
           )}
 
+          {/* MESSAGES */}
           {messages.map((msg, index) => (
 
             <div
               key={index}
               style={{
                 ...styles.messageRow,
+
                 justifyContent:
                   msg.role === "user"
                     ? "flex-end"
@@ -452,16 +285,17 @@ function AIInsights() {
 
               <div
                 style={{
+
                   ...styles.messageBubble,
 
                   background:
                     msg.role === "user"
-                      ? "linear-gradient(135deg, #4f46e5, #6366f1)"
+                      ? "#111827"
                       : "#ffffff",
 
                   color:
                     msg.role === "user"
-                      ? "white"
+                      ? "#ffffff"
                       : "#111827",
 
                   border:
@@ -485,14 +319,17 @@ function AIInsights() {
 
           ))}
 
+          {/* LOADING */}
           {loading && (
-            <div style={styles.typingContainer}>
+
+            <div style={styles.typingRow}>
 
               <div style={styles.typingBubble}>
                 AI is typing...
               </div>
 
             </div>
+
           )}
 
           <div ref={chatEndRef} />
@@ -501,28 +338,48 @@ function AIInsights() {
 
       </div>
 
-      {/* INPUT BAR */}
+      {/* INPUT */}
       <div style={styles.inputContainer}>
 
+        {/* MIC */}
         <button
           onClick={startVoiceInput}
           style={{
             ...styles.micButton,
-            background: listening
-              ? "#ef4444"
-              : "#f3f4f6",
 
-            color: listening
-              ? "white"
-              : "#111827"
+            background:
+              listening
+                ? "#ef4444"
+                : "#f3f4f6",
+
+            color:
+              listening
+                ? "#ffffff"
+                : "#111827"
           }}
         >
           🎤
         </button>
 
+        {/* STOP */}
+        {listening && (
+
+          <button
+            onClick={stopVoiceInput}
+            style={styles.stopButton}
+          >
+            ⏹
+          </button>
+
+        )}
+
+        {/* INPUT */}
         <input
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+
+          onChange={(e) =>
+            setInput(e.target.value)
+          }
 
           placeholder={
             listening
@@ -533,10 +390,12 @@ function AIInsights() {
           style={styles.input}
 
           onKeyDown={(e) =>
-            e.key === "Enter" && sendMessage()
+            e.key === "Enter" &&
+            sendMessage()
           }
         />
 
+        {/* SEND */}
         <button
           onClick={() => sendMessage()}
           style={styles.sendButton}
@@ -556,17 +415,14 @@ const styles = {
     height: "100vh",
     display: "flex",
     flexDirection: "column",
-    background: "#f4f7fb",
+    background: "#f5f7fb",
     fontFamily: "Arial, sans-serif"
   },
 
   header: {
     padding: "18px 20px",
-    background: "white",
-    borderBottom: "1px solid #e5e7eb",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center"
+    background: "#ffffff",
+    borderBottom: "1px solid #e5e7eb"
   },
 
   title: {
@@ -576,43 +432,42 @@ const styles = {
   },
 
   subtitle: {
-    margin: "4px 0 0 0",
-    color: "#6b7280",
-    fontSize: "14px"
+    marginTop: "4px",
+    fontSize: "14px",
+    color: "#6b7280"
   },
 
   chatArea: {
     flex: 1,
+    padding: "16px",
+    overflow: "hidden",
     display: "flex",
-    justifyContent: "center",
-    padding: "20px",
-    overflow: "hidden"
+    justifyContent: "center"
   },
 
   chatBox: {
     width: "100%",
     maxWidth: "900px",
-    background: "white",
-    borderRadius: "22px",
+    background: "#ffffff",
+    borderRadius: "20px",
     padding: "20px",
     overflowY: "auto",
-    boxShadow: "0 6px 24px rgba(0,0,0,0.06)",
     display: "flex",
     flexDirection: "column",
-    gap: "14px"
+    gap: "14px",
+    border: "1px solid #e5e7eb"
   },
 
   messageRow: {
-    display: "flex",
-    width: "100%"
+    display: "flex"
   },
 
   messageBubble: {
-    maxWidth: "82%",
+    maxWidth: "80%",
     padding: "12px 14px",
     borderRadius: "18px",
     fontSize: "14px",
-    lineHeight: "1.5",
+    lineHeight: "1.6",
     wordBreak: "break-word"
   },
 
@@ -621,28 +476,28 @@ const styles = {
   },
 
   time: {
+    marginTop: "6px",
     fontSize: "10px",
     opacity: 0.7,
-    marginTop: "6px",
     textAlign: "right"
   },
 
-  typingContainer: {
+  typingRow: {
     display: "flex",
     justifyContent: "flex-start"
   },
 
   typingBubble: {
-    background: "#eef2ff",
+    background: "#f3f4f6",
+    color: "#374151",
     padding: "10px 14px",
     borderRadius: "14px",
-    fontSize: "13px",
-    color: "#4338ca"
+    fontSize: "13px"
   },
 
   inputContainer: {
     padding: "14px",
-    background: "white",
+    background: "#ffffff",
     borderTop: "1px solid #e5e7eb",
     display: "flex",
     gap: "10px",
@@ -659,21 +514,31 @@ const styles = {
   },
 
   sendButton: {
-    padding: "14px 20px",
+    padding: "14px 18px",
     border: "none",
     borderRadius: "14px",
-    background: "linear-gradient(135deg, #4f46e5, #6366f1)",
-    color: "white",
-    cursor: "pointer",
-    fontWeight: "bold"
+    background: "#111827",
+    color: "#ffffff",
+    fontWeight: "bold",
+    cursor: "pointer"
   },
 
   micButton: {
     padding: "12px",
-    border: "none",
     borderRadius: "14px",
+    border: "none",
     cursor: "pointer",
     fontSize: "18px"
+  },
+
+  stopButton: {
+    padding: "12px",
+    borderRadius: "14px",
+    border: "none",
+    background: "#ef4444",
+    color: "white",
+    cursor: "pointer",
+    fontSize: "16px"
   },
 
   emptyState: {
@@ -682,12 +547,12 @@ const styles = {
     flexDirection: "column",
     justifyContent: "center",
     alignItems: "center",
-    color: "#6b7280",
-    marginTop: "60px"
+    marginTop: "60px",
+    color: "#6b7280"
   },
 
   emptyIcon: {
-    fontSize: "48px"
+    fontSize: "52px"
   },
 
   emptyTitle: {
