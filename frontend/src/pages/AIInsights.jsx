@@ -1,88 +1,123 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import axios from "axios";
-import { Pie } from "react-chartjs-2";
-import {
-  Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend
-} from "chart.js";
-
-ChartJS.register(ArcElement, Tooltip, Legend);
 
 const API = "http://127.0.0.1:8000";
 
 function AIInsights() {
-  const [aiData, setAiData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const fetchAI = async () => {
+  const sendMessage = async () => {
+    if (!input.trim()) return;
+
+    const userMessage = { role: "user", text: input };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    setLoading(true);
+
     try {
-      // ✅ Using REAL AI endpoint (Ollama chat)
       const res = await axios.get(
-        `${API}/ai-chat?prompt=Analyze my spending and give financial advice`
+        `${API}/ai-chat?prompt=${encodeURIComponent(input)}`
       );
 
-      console.log("AI RESPONSE:", res.data);
-      setAiData(res.data);
+      const aiMessage = {
+        role: "ai",
+        text: res.data.reply
+      };
+
+      setMessages((prev) => [...prev, aiMessage]);
     } catch (err) {
-      console.log("AI ERROR:", err);
+      setMessages((prev) => [
+        ...prev,
+        { role: "ai", text: "Error getting response from AI" }
+      ]);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchAI();
-  }, []);
-
-  if (loading) return <p>Loading AI Insights...</p>;
-
-  if (!aiData?.reply) return <p>AI response not available</p>;
-
-  // fallback dummy chart (since ai-chat does not return breakdown)
-  const data = {
-    labels: ["Food", "Travel", "Shopping"],
-    datasets: [
-      {
-        data: [30, 50, 20],
-        backgroundColor: ["#4CAF50", "#2196F3", "#FFC107"]
-      }
-    ]
-  };
-
   return (
-    <div style={{ padding: "20px", maxWidth: "700px", margin: "auto" }}>
-      
-      <h2>🤖 AI Insights Dashboard</h2>
+    <div style={styles.container}>
+      <h2>🤖 AI Finance Chat</h2>
 
-      {/* AI RESPONSE CARD */}
-      <div
-        style={{
-          padding: "15px",
-          background: "#f5f5f5",
-          borderRadius: "10px",
-          marginBottom: "20px"
-        }}
-      >
-        <h3>AI Financial Advice</h3>
-        <p style={{ lineHeight: "1.6" }}>{aiData.reply}</p>
+      {/* CHAT BOX */}
+      <div style={styles.chatBox}>
+        {messages.map((msg, i) => (
+          <div
+            key={i}
+            style={{
+              ...styles.message,
+              alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
+              background: msg.role === "user" ? "#DCF8C6" : "#fff"
+            }}
+          >
+            {msg.text}
+          </div>
+        ))}
+
+        {loading && (
+          <div style={styles.typing}>AI is thinking...</div>
+        )}
       </div>
 
-      {/* CHART */}
-      <div
-        style={{
-          padding: "15px",
-          background: "#fff",
-          borderRadius: "10px",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
-        }}
-      >
-        <h3>Spending Overview</h3>
-        <Pie data={data} />
+      {/* INPUT BOX */}
+      <div style={styles.inputBox}>
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Ask about your expenses..."
+          style={styles.input}
+        />
+
+        <button onClick={sendMessage} style={styles.button}>
+          Send
+        </button>
       </div>
     </div>
   );
 }
+
+const styles = {
+  container: {
+    maxWidth: "600px",
+    margin: "auto",
+    padding: "20px",
+    fontFamily: "Arial"
+  },
+  chatBox: {
+    height: "400px",
+    overflowY: "auto",
+    border: "1px solid #ddd",
+    padding: "10px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
+    background: "#f9f9f9"
+  },
+  message: {
+    padding: "10px",
+    borderRadius: "10px",
+    maxWidth: "75%"
+  },
+  inputBox: {
+    display: "flex",
+    marginTop: "10px",
+    gap: "10px"
+  },
+  input: {
+    flex: 1,
+    padding: "10px"
+  },
+  button: {
+    padding: "10px 15px",
+    cursor: "pointer"
+  },
+  typing: {
+    fontStyle: "italic",
+    color: "gray"
+  }
+};
 
 export default AIInsights;
