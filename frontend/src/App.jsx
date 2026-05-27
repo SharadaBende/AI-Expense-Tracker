@@ -61,7 +61,7 @@ function App() {
 
         {/* BRAND */}
         <div style={styles.logo}>
-          💰 ExpenseAI
+          💰 Expense Tracker AI
         </div>
 
         {/* LINKS */}
