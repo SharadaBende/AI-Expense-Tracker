@@ -1,7 +1,9 @@
-import os
 import requests
+
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
 from sqlalchemy.orm import Session
 
 import models
@@ -10,25 +12,35 @@ import crud
 
 from database import engine, SessionLocal, Base
 
-# CREATE DATABASE TABLES
-Base.metadata.create_all(bind=engine)
+from auth import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    decode_token
+)
 
-# FASTAPI APP
+# ---------------- APP ----------------
 app = FastAPI()
 
-# CHAT MEMORY
+# ---------------- SECURITY ----------------
+security = HTTPBearer()
+
+# ---------------- DATABASE ----------------
+Base.metadata.create_all(bind=engine)
+
+# ---------------- CHAT MEMORY ----------------
 chat_history = []
 
-# CORS
+# ---------------- CORS ----------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# DATABASE CONNECTION
+# ---------------- DB SESSION ----------------
 def get_db():
     db = SessionLocal()
     try:
@@ -36,43 +48,138 @@ def get_db():
     finally:
         db.close()
 
+# ---------------- AUTH USER ----------------
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
 
-# HOME ROUTE
+    token = credentials.credentials
+
+    print("TOKEN:", token)
+
+    payload = decode_token(token)
+
+    print("PAYLOAD:", payload)
+
+    if payload is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid token"
+        )
+
+    return payload
+
+# ---------------- HOME ----------------
 @app.get("/")
 def home():
+    return {"message": "AI Expense Tracker API Running"}
+
+# ---------------- REGISTER ----------------
+@app.post("/register")
+def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
+
+    existing_user = db.query(models.User).filter(
+        models.User.email == user.email
+    ).first()
+
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail="User already exists"
+        )
+
+    new_user = models.User(
+        email=user.email,
+        password=hash_password(user.password)
+    )
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return {"message": "User created successfully"}
+
+# ---------------- LOGIN ----------------
+@app.post("/login")
+def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
+
+    db_user = db.query(models.User).filter(
+        models.User.email == user.email
+    ).first()
+
+    if not db_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid credentials"
+        )
+
+    if not verify_password(user.password, db_user.password):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid credentials"
+        )
+
+    token = create_access_token({
+        "user_id": db_user.id,
+        "email": db_user.email
+    })
+
     return {
-        "message": "AI Expense Tracker API Running"
+        "access_token": token,
+        "token_type": "bearer"
     }
 
-
-# ADD EXPENSE
+# ---------------- ADD EXPENSE ----------------
 @app.post("/expenses", response_model=schemas.ExpenseResponse)
 def add_expense(
     expense: schemas.ExpenseCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user)
 ):
-    return crud.create_expense(db, expense)
 
+    return crud.create_expense(
+        db,
+        expense,
+        user["user_id"]
+    )
 
-# GET ALL EXPENSES
+# ---------------- GET EXPENSES ----------------
 @app.get("/expenses")
-def get_all_expenses(db: Session = Depends(get_db)):
-    return crud.get_expenses(db)
+def get_expenses(
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user)
+):
 
+    return crud.get_expenses(
+        db,
+        user["user_id"]
+    )
 
-# DELETE EXPENSE
+# ---------------- DELETE EXPENSE ----------------
 @app.delete("/expenses/{expense_id}")
 def delete_expense(
     expense_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user)
 ):
-    return crud.delete_expense(db, expense_id)
 
+    return crud.delete_expense(
+        db,
+        expense_id,
+        user["user_id"]
+    )
 
-# AI SUMMARY
+# ---------------- AI SUMMARY ----------------
 @app.get("/ai-summary")
-def ai_summary(db: Session = Depends(get_db)):
-    expenses = crud.get_expenses(db)
+def ai_summary(
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user)
+):
+
+    expenses = crud.get_expenses(
+        db,
+        user["user_id"]
+    )
 
     if not expenses:
         return {
@@ -85,37 +192,35 @@ def ai_summary(db: Session = Depends(get_db)):
 
     for e in expenses:
         category_totals[e.category] = (
-            category_totals.get(e.category, 0) + e.amount
+            category_totals.get(e.category, 0)
+            + e.amount
         )
 
-    highest_category = max(
-        category_totals,
-        key=category_totals.get
-    )
-
-    suggestion = (
-        f"You spent most on {highest_category}. "
-        f"Try reducing expenses in this category."
-    )
+    highest = max(category_totals, key=category_totals.get)
 
     return {
         "total_expense": total,
         "category_breakdown": category_totals,
-        "ai_suggestion": suggestion
+        "ai_suggestion":
+        f"You spent most on {highest}. Try reducing this category."
     }
 
-
-# AI CHAT
+# ---------------- AI CHAT ----------------
 @app.get("/ai-chat")
 def ai_chat(
     prompt: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user)
 ):
-    try:
-        global chat_history
 
-        # GET EXPENSES
-        expenses = crud.get_expenses(db)
+    global chat_history
+
+    try:
+
+        expenses = crud.get_expenses(
+            db,
+            user["user_id"]
+        )
 
         total = sum(e.amount for e in expenses)
 
@@ -123,40 +228,27 @@ def ai_chat(
 
         for e in expenses:
             category_totals[e.category] = (
-                category_totals.get(e.category, 0) + e.amount
+                category_totals.get(e.category, 0)
+                + e.amount
             )
 
-        # SYSTEM PROMPT
         system_prompt = f"""
-You are a smart and natural AI assistant.
-
-RULES:
-- Keep responses concise and natural.
-- Talk naturally like ChatGPT.
-- Reply to casual conversations normally.
-- Reply to random questions naturally.
-- Keep answers short unless user asks deeply.
-- NEVER ignore user messages.
-- Avoid repetitive answers.
-- Do NOT constantly discuss finance.
-- Only discuss money if user asks.
-- Be friendly and human-like.
+You are a smart AI assistant.
 
 Expense Data:
 Total Expense = {total}
 Category Totals = {category_totals}
+
+Talk naturally and helpfully.
 """
 
-        # SAVE USER MESSAGE
         chat_history.append({
             "role": "user",
             "content": prompt
         })
 
-        # KEEP ONLY LAST 10 MESSAGES
         chat_history = chat_history[-10:]
 
-        # BUILD MESSAGE LIST
         messages = [
             {
                 "role": "system",
@@ -164,42 +256,29 @@ Category Totals = {category_totals}
             }
         ] + chat_history
 
-        # OLLAMA API CALL
         response = requests.post(
-    "http://localhost:11434/api/chat",
-    json={
-        "model": "qwen2.5-coder:3b",
-
-        "messages": messages[-6:],
-
-        "stream": False,
-
-        "options": {
-            "temperature": 0.7,
-            "num_predict": 80,
-            "num_ctx": 1024
-        }
-    },
-    timeout=40
-)
+            "http://localhost:11434/api/chat",
+            json={
+                "model": "llama3",
+                "messages": messages,
+                "stream": False
+            },
+            timeout=40
+        )
 
         data = response.json()
 
-        # SAFE RESPONSE EXTRACTION
-        ai_reply = (
-            data.get("message", {})
-            .get("content", "")
-            .strip()
-        )
+        ai_reply = data.get(
+            "message",
+            {}
+        ).get(
+            "content",
+            ""
+        ).strip()
 
-        # EMPTY RESPONSE PROTECTION
         if not ai_reply:
-            ai_reply = (
-                "Sorry, I couldn't understand that. "
-                "Please try again."
-            )
+            ai_reply = "No response from AI"
 
-        # SAVE AI RESPONSE
         chat_history.append({
             "role": "assistant",
             "content": ai_reply
@@ -213,5 +292,5 @@ Category Totals = {category_totals}
         print("AI ERROR:", e)
 
         return {
-            "reply": "AI server issue. Please try again."
+            "reply": "AI server error"
         }

@@ -1,30 +1,39 @@
 from sqlalchemy.orm import Session
-import models
-import schemas
+from models import Expense
 
-def create_expense(db: Session, expense: schemas.ExpenseCreate):
-    db_expense = models.Expense(
+
+def create_expense(db: Session, expense, user_id):
+
+    new_expense = Expense(
         title=expense.title,
         amount=expense.amount,
-        category=expense.category
+        category=expense.category,
+        user_id=user_id
     )
 
-    db.add(db_expense)
+    db.add(new_expense)
     db.commit()
-    db.refresh(db_expense)
+    db.refresh(new_expense)
 
-    return db_expense
+    return new_expense
 
-def get_expenses(db: Session):
-    return db.query(models.Expense).all()
 
-def delete_expense(db: Session, expense_id: int):
-    expense = db.query(models.Expense).filter(
-        models.Expense.id == expense_id
+def get_expenses(db: Session, user_id):
+
+    return db.query(Expense).filter(
+        Expense.user_id == user_id
+    ).all()
+
+
+def delete_expense(db: Session, expense_id, user_id):
+
+    expense = db.query(Expense).filter(
+        Expense.id == expense_id,
+        Expense.user_id == user_id
     ).first()
 
     if expense:
         db.delete(expense)
         db.commit()
 
-    return expense
+    return {"message": "Expense deleted"}
